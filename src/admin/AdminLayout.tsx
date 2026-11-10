@@ -61,7 +61,7 @@ export function AdminLayout() {
     <div className="admin">
       <aside className="admin-side">
         <div className="brand">
-          <Wordmark name={name} tagline={shop?.tagline ?? ''} />
+          <Wordmark sticker name={name} tagline={shop?.tagline ?? ''} />
           <span className="badge accent">Painel da barbearia</span>
         </div>
         {links}
@@ -76,7 +76,7 @@ export function AdminLayout() {
       <div className="admin-main">
         <div className="admin-mobile-nav">
           <div className="bar">
-            <Wordmark name={name} tagline="Painel da barbearia" />
+            <Wordmark sticker size="sm" name={name} tagline="Painel da barbearia" />
             <Link className="btn sm outline" to="/">
               <ExternalLink size={16} /> App
             </Link>
@@ -125,7 +125,7 @@ function NoAccess({ email }: { email: string }) {
 
   return (
     <div className="first-access">
-      <Wordmark size="lg" center />
+      <Wordmark size="lg" center sticker />
       <div className="card">
         {hasOwner ? (
           <Empty icon={<ShieldAlert size={34} />} title="Sem acesso ao painel">

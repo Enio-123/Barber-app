@@ -11,7 +11,7 @@ export function ClientLayout() {
     <div className="app">
       <header className="app-header">
         <Link to="/" aria-label="Início">
-          <Wordmark name={scriptName(shop?.name ?? 'Easy Cut')} tagline={shop?.tagline ?? 'Studio & Barber Shop'} />
+          <Wordmark sticker size="sm" name={scriptName(shop?.name ?? 'Easy Cut')} tagline={shop?.tagline ?? 'Studio & Barber Shop'} />
         </Link>
         {isAdmin ? (
           <Link className="btn sm outline" to="/admin">

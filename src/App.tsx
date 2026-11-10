@@ -87,8 +87,8 @@ function AuthLinks() {
 
 function Splash() {
   return (
-    <div className="center-fill" style={{ minHeight: '100dvh', gap: 24 }}>
-      <Wordmark size="lg" center />
+    <div className="center-fill" style={{ minHeight: '100dvh', gap: 28 }}>
+      <Wordmark size="lg" center sticker />
       <Spinner />
     </div>
   );

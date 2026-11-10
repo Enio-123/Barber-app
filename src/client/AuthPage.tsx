@@ -112,7 +112,7 @@ export function AuthPage() {
 
   return (
     <div className="stack lg">
-      <div>
+      <div className="camo-hero">
         <h1 className="page-title">{mode === 'esqueci' ? 'Recuperar senha' : mode === 'cadastro' ? 'Criar conta' : 'Acesse sua conta'}</h1>
         <p className="page-sub">
           {mode === 'esqueci'

@@ -96,3 +96,4 @@ O teste no navegador usa o Playwright e salva prints de cada tela em `e2e-prints
 | `public/` | Ícones, manifesto e service worker (instalar no celular) |
 | `tests/` | Testes do banco e do navegador |
 | `dev/` | Supabase local para desenvolvimento |
+| `tools/` | Gerador da estampa camuflada (`camuflado.py`) e dos ícones do app (`icones.mjs`) |

@@ -3,14 +3,19 @@ import { Eye, EyeOff, Info, Star } from 'lucide-react';
 import { initials } from '../lib/format';
 import type { Status } from '../lib/types';
 
-export function Wordmark({ size, center, tagline = 'Studio & Barber Shop', name = 'EasyCut' }: {
-  size?: 'lg';
+/** Logo em letra cursiva. Com `sticker` vira o adesivo camuflado do logo antigo da barbearia. */
+export function Wordmark({ size, center, sticker, tagline = 'Studio & Barber Shop', name = 'EasyCut' }: {
+  size?: 'lg' | 'sm';
   center?: boolean;
+  sticker?: boolean;
   tagline?: string;
   name?: string;
 }) {
   return (
-    <span className={`wordmark${size ? ` ${size}` : ''}${center ? ' center' : ''}`} aria-label={`${name} ${tagline}`}>
+    <span
+      className={`wordmark${size ? ` ${size}` : ''}${center ? ' center' : ''}${sticker ? ' sticker' : ''}`}
+      aria-label={`${name} ${tagline}`}
+    >
       <span className="wordmark-name">{name}</span>
       {tagline && <span className="wordmark-tag">{tagline}</span>}
     </span>

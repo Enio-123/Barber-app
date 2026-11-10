@@ -1,5 +1,7 @@
 /* Easy Cut · design system
-   Preto e branco do logo, com o azul-acinzentado da parede camuflada como cor de destaque. */
+   Base preto e branco do logo, com o camuflado militar da barbearia:
+   - transparente e em preto e branco no fundo das telas;
+   - verde, oliva e marrom nos destaques (adesivo do logo, faixas de abertura e ícones). */
 
 :root {
   --bg: #0b0c0e;
@@ -13,11 +15,15 @@
   --text-2: #c3c9d1;
   --muted: #8a929d;
   --faint: #5d6570;
-  --accent: #a9bbdd;
-  --accent-strong: #c6d3ec;
+  --accent: #f2f4f7;
+  --accent-strong: #ffffff;
   --accent-ink: #0b0c0e;
-  --accent-soft: rgba(169, 187, 221, 0.12);
-  --accent-line: rgba(169, 187, 221, 0.45);
+  --accent-soft: rgba(242, 244, 247, 0.09);
+  --accent-line: rgba(242, 244, 247, 0.42);
+  --camo-khaki: #a29a72;
+  --camo-olive: #6e764e;
+  --camo-brown: #6a5a42;
+  --camo-dark: #46463a;
   --success: #4cc38a;
   --success-soft: rgba(76, 195, 138, 0.13);
   --danger: #f2555a;
@@ -44,7 +50,6 @@
 html,
 body {
   margin: 0;
-  background: var(--bg);
   color: var(--text);
   font-family: var(--font);
   font-size: 15px;
@@ -53,8 +58,15 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+/* Fundo preto com o camuflado em preto e branco, bem transparente (6%). */
+html {
+  background: linear-gradient(rgba(11, 12, 14, 0.94), rgba(11, 12, 14, 0.94)),
+    url('./assets/camo-mono.webp') 0 0 / 520px 520px repeat, var(--bg);
+}
+
 body {
   min-height: 100dvh;
+  background: transparent;
 }
 
 button,
@@ -134,6 +146,107 @@ p {
 
 .wordmark.center {
   align-items: center;
+}
+
+.wordmark.sm .wordmark-name {
+  font-size: 24px;
+}
+
+.wordmark.sm .wordmark-tag {
+  font-size: 8.5px;
+  margin-top: 6px;
+}
+
+/* ---------- camuflado colorido ---------- */
+
+/* Adesivo camuflado do logo: nome em branco sobre o camuflado verde, com borda branca de adesivo. */
+.wordmark.sticker {
+  padding: 9px 14px 10px;
+  border-radius: 12px;
+  background: linear-gradient(rgba(12, 13, 10, 0.26), rgba(12, 13, 10, 0.26)),
+    url('./assets/camo.webp') 0 0 / 260px 260px repeat, var(--camo-olive);
+  box-shadow: 0 0 0 2px rgba(242, 244, 247, 0.92), 0 8px 22px rgba(0, 0, 0, 0.5);
+}
+
+.wordmark.sticker .wordmark-name {
+  color: #fff;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5), 0 0 14px rgba(0, 0, 0, 0.45);
+}
+
+.wordmark.sticker .wordmark-tag {
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.65), 0 0 8px rgba(0, 0, 0, 0.5);
+}
+
+.wordmark.sticker.lg {
+  padding: 18px 26px 20px;
+  border-radius: 18px;
+  background-size: auto, 340px 340px;
+}
+
+.wordmark.sticker.sm {
+  padding: 7px 11px 8px;
+  border-radius: 10px;
+}
+
+/* Faixa de abertura das telas: camuflado verde com sombra embaixo para o texto ficar legível. */
+.camo-hero {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  min-height: 176px;
+  padding: 64px 18px 16px;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: linear-gradient(180deg, rgba(8, 9, 8, 0) 0%, rgba(8, 9, 8, 0.3) 30%, rgba(8, 9, 8, 0.72) 62%, rgba(8, 9, 8, 0.88) 100%),
+    url('./assets/camo.webp') 0 0 / 380px 380px repeat, var(--camo-olive);
+  border: 1px solid rgba(162, 154, 114, 0.35);
+}
+
+.camo-hero .page-title {
+  color: #fff;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+}
+
+.camo-hero .page-sub {
+  color: rgba(255, 255, 255, 0.84);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.6);
+}
+
+.camo-hero .status-line {
+  align-self: flex-start;
+  margin-top: 12px;
+  padding: 5px 11px 5px 9px;
+  border-radius: 999px;
+  background: rgba(8, 9, 10, 0.72);
+  color: #fff;
+  backdrop-filter: blur(6px);
+}
+
+/* Cartão com o camuflado colorido (capa da barbearia). */
+.camo-card {
+  border-radius: var(--radius);
+  border: 1px solid rgba(162, 154, 114, 0.35);
+  background: radial-gradient(120% 90% at 50% 45%, rgba(8, 9, 8, 0.25) 0%, rgba(8, 9, 8, 0.78) 100%),
+    url('./assets/camo.webp') 0 0 / 380px 380px repeat, var(--camo-olive);
+}
+
+.camo-card .wordmark-name {
+  color: #fff;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.5), 0 0 18px rgba(0, 0, 0, 0.5);
+}
+
+.camo-card .wordmark-tag {
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.65), 0 0 8px rgba(0, 0, 0, 0.5);
+}
+
+.camo-card .status-line,
+.camo-card .text-2,
+.camo-card .muted {
+  color: rgba(255, 255, 255, 0.9);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.7);
 }
 
 /* ---------- botões ---------- */
@@ -1267,13 +1380,14 @@ p {
   display: flex;
   flex-direction: column;
   gap: 4px;
-  padding: 20px 14px;
+  padding: 22px 14px 20px;
   border-right: 1px solid var(--border);
-  background: var(--bg-elev);
+  background: linear-gradient(rgba(17, 19, 22, 0.93), rgba(17, 19, 22, 0.93)),
+    url('./assets/camo-mono.webp') 0 0 / 420px 420px repeat, var(--bg-elev);
 }
 
 .admin-side .brand {
-  padding: 0 8px 18px;
+  padding: 2px 8px 20px;
 }
 
 .admin-side .brand .badge {
@@ -1525,7 +1639,7 @@ p {
   border-radius: 8px;
   border: 1px solid var(--accent-line);
   border-left: 3px solid var(--accent);
-  background: #1f2632;
+  background: #262a30;
   text-align: left;
   overflow: hidden;
   cursor: pointer;

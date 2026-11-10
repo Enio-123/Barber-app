@@ -20,7 +20,7 @@ export function ShopPage() {
 
   return (
     <div className="stack lg">
-      <div className="card card-pad stack" style={{ alignItems: 'center', textAlign: 'center', padding: '28px 16px' }}>
+      <div className="camo-card card-pad stack" style={{ alignItems: 'center', textAlign: 'center', padding: '34px 16px 26px' }}>
         <Wordmark size="lg" center name={scriptName(shop.name)} tagline={shop.tagline} />
         {status && (
           <p className="status-line">

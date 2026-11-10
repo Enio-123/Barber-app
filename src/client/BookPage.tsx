@@ -110,7 +110,7 @@ export function BookPage() {
   if (!ready) {
     return (
       <div className="stack lg">
-        <div>
+        <div className="camo-hero">
           <h1 className="page-title">Agende seu horário</h1>
         </div>
         <Empty icon={<CalendarClock size={36} />} title="Agenda online em preparação">
@@ -130,11 +130,11 @@ export function BookPage() {
 
   return (
     <div className="stack lg">
-      <div>
+      <div className="camo-hero">
         <h1 className="page-title">Agende seu horário</h1>
         <p className="page-sub">Escolha o barbeiro, os serviços e o horário que preferir.</p>
         {status && (
-          <p className="status-line" style={{ marginTop: 10 }}>
+          <p className="status-line">
             <span className={`dot ${status.open ? 'open' : 'closed'}`} />
             {status.text}
           </p>
