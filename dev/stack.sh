@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Sobe um Supabase mínimo local (Postgres + Auth + REST + e-mail de teste) para testar o Easy Cut.
-# Uso: dev/stack.sh up | down | reset
+# Uso: dev/stack.sh up | down | reset   (depois: node dev/proxy.mjs e npm run dev)
 set -euo pipefail
 cd "$(dirname "$0")"
 source ./local.env
@@ -65,8 +65,17 @@ up() {
   echo " ok"
 }
 
+# Cria as tabelas e funções (o mesmo SQL do Supabase de verdade) e coloca os dados de exemplo.
+schema() {
+  docker exec -i -e PGPASSWORD=$PW ec-db psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -q \
+    < ../supabase/migrations/20261110000000_easycut.sql
+  docker exec -i -e PGPASSWORD=$PW ec-db psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -q < ../supabase/seed.sql
+  docker exec -e PGPASSWORD=$PW ec-db psql -h 127.0.0.1 -U postgres -d postgres -q -c "notify pgrst, 'reload schema'"
+  echo "banco ok"
+}
+
 case "${1:-up}" in
-  up) up ;;
+  up) up; schema ;;
   down) down ;;
-  reset) down; up ;;
+  reset) down; up; schema ;;
 esac
