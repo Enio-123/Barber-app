@@ -2,7 +2,7 @@ name: Publicar no GitHub Pages
 
 on:
   push:
-    branches: [main, claude/project-thread-hwz6km]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
