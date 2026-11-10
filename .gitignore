@@ -1,0 +1,9 @@
+node_modules
+dist
+.env.local
+supabase/.temp
+supabase/.branches
+tests/out
+e2e-prints
+.env.*.local
+*.tsbuildinfo
