@@ -19,8 +19,8 @@ Feito com React + Vite (site estático no GitHub Pages) e Supabase (banco, login
 2. **SQL Editor** → cole o arquivo `supabase/migrations/20261110000000_easycut.sql` inteiro → **Run**.
 3. **Authentication → Sign In / Providers** → desligue **Confirm email** → Save. Assim o cliente cria a conta e já agenda, sem esperar e-mail.
 4. **Authentication → URL Configuration**:
-   - Site URL: `https://enio-123.github.io/EasyCut/`
-   - Redirect URLs: adicione `https://enio-123.github.io/EasyCut/**`
+   - Site URL: `https://enio-123.github.io/Barber-app/`
+   - Redirect URLs: adicione `https://enio-123.github.io/Barber-app/**`
 
    Sem isso o link de "Esqueceu a senha?" abre no endereço errado.
 5. Pegue a **URL do projeto** e a **chave publishable** (começa com `sb_publishable_`; projetos antigos mostram a "anon key", que também serve). As duas são públicas por natureza e vão dentro do app. **Nunca** use a secret key nem a service_role.
@@ -38,11 +38,11 @@ VITE_SUPABASE_ANON_KEY=sb_publishable_...
 
 1. No repositório: **Settings → Pages → Source: GitHub Actions**.
 2. Todo push publica sozinho (`.github/workflows/deploy.yml`). Leva uns 2 minutos.
-3. Endereço: `https://enio-123.github.io/EasyCut/`
+3. Endereço: `https://enio-123.github.io/Barber-app/`
 
 ### 4. Primeiro acesso ao painel
 
-Abra o app, crie a sua conta e entre em `https://enio-123.github.io/EasyCut/#/admin`. Enquanto o painel não tem dono aparece o botão **"Sou o dono, assumir o painel"**: a primeira conta que tocar vira dona e o botão some para sempre. Depois disso, outras pessoas da equipe só entram se um dono liberar o e-mail em **Ajustes → Equipe**.
+Abra o app, crie a sua conta e entre em `https://enio-123.github.io/Barber-app/#/admin`. Enquanto o painel não tem dono aparece o botão **"Sou o dono, assumir o painel"**: a primeira conta que tocar vira dona e o botão some para sempre. Depois disso, outras pessoas da equipe só entram se um dono liberar o e-mail em **Ajustes → Equipe**.
 
 O painel mostra 4 passos para deixar a agenda pronta: serviços, barbeiros, horários e WhatsApp com endereço.
 
