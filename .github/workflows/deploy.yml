@@ -1,21 +1,47 @@
-name: Publicar no GitHub Pages
+name: Testar e publicar
 
+# Toda mudança passa pelos testes de segurança do banco antes de ir para o ar.
+# Só a main publica no GitHub Pages; as outras branches e os pull requests só testam.
 on:
   push:
-    branches: [main]
+    branches: [main, 'claude/**']
+  pull_request:
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
+# Uma publicação já começada sempre termina; nas outras branches o teste novo substitui o antigo.
 concurrency:
-  group: pages
-  cancel-in-progress: true
+  group: ${{ github.ref == 'refs/heads/main' && 'pages' || github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  testes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - name: Tipos (TypeScript)
+        run: npx tsc -b
+      - name: Dependências do app sem falha de segurança conhecida
+        run: npm audit --omit=dev --audit-level=high
+      - name: Supabase local (banco, login e API)
+        run: dev/stack.sh up
+      - name: Testes do banco (regras de acesso, papéis, verificação em duas etapas, LGPD)
+        run: |
+          node dev/proxy.mjs > proxy.log 2>&1 &
+          sleep 2
+          npm run test:db
+
   build:
+    if: github.ref == 'refs/heads/main'
+    needs: testes
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -30,8 +56,12 @@ jobs:
           path: dist
 
   deploy:
+    if: github.ref == 'refs/heads/main'
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

@@ -49,7 +49,9 @@ up() {
     -e GOTRUE_MAILER_URLPATHS_INVITE=/auth/v1/verify -e GOTRUE_MAILER_URLPATHS_CONFIRMATION=/auth/v1/verify \
     -e GOTRUE_MAILER_URLPATHS_RECOVERY=/auth/v1/verify -e GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE=/auth/v1/verify \
     -e GOTRUE_EXTERNAL_PHONE_ENABLED=false -e GOTRUE_RATE_LIMIT_EMAIL_SENT=100 \
-    -e GOTRUE_PASSWORD_MIN_LENGTH=6 \
+    -e GOTRUE_PASSWORD_MIN_LENGTH=8 \
+    -e GOTRUE_PASSWORD_REQUIRED_CHARACTERS="abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ:0123456789" \
+    -e GOTRUE_MFA_TOTP_ENROLL_ENABLED=true -e GOTRUE_MFA_TOTP_VERIFY_ENABLED=true -e GOTRUE_MFA_MAX_ENROLLED_FACTORS=10 \
     supabase/gotrue:v2.180.0 >/dev/null
   docker run -d --name ec-rest --network $NET -p 54330:3000 \
     -e PGRST_DB_URI="postgres://authenticator:$PW@ec-db:5432/postgres" \
@@ -67,8 +69,9 @@ up() {
 
 # Cria as tabelas e funções (o mesmo SQL do Supabase de verdade) e coloca os dados de exemplo.
 schema() {
-  docker exec -i -e PGPASSWORD=$PW ec-db psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -q \
-    < ../supabase/migrations/20261110000000_easycut.sql
+  for f in ../supabase/migrations/*.sql; do
+    docker exec -i -e PGPASSWORD=$PW ec-db psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -q < "$f"
+  done
   docker exec -i -e PGPASSWORD=$PW ec-db psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -q < ../supabase/seed.sql
   docker exec -e PGPASSWORD=$PW ec-db psql -h 127.0.0.1 -U postgres -d postgres -q -c "notify pgrst, 'reload schema'"
   echo "banco ok"

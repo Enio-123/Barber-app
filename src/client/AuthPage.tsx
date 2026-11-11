@@ -1,11 +1,13 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import { MailCheck } from 'lucide-react';
 import { appBaseUrl, supabase } from '../lib/supabase';
 import { useAuth } from '../state/auth';
 import { useFeedback } from '../state/feedback';
 import { errorMessage } from '../lib/errors';
 import { maskPhone, onlyDigits, validEmail, validPhone } from '../lib/format';
+import { passwordProblem, PASSWORD_HINT } from '../lib/password';
+import { TERMS_VERSION } from '../lib/legal';
 import { Empty, Field, PasswordField, Spinner } from '../ui/kit';
 
 type Mode = 'entrar' | 'cadastro' | 'esqueci';
@@ -30,6 +32,7 @@ export function AuthPage() {
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [terms, setTerms] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [formError, setFormError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -48,9 +51,12 @@ export function AuthPage() {
     if (mode === 'cadastro') {
       if (name.trim().length < 2) errs.name = 'Informe seu nome.';
       if (!validPhone(phone)) errs.phone = 'Informe o WhatsApp com DDD.';
+      const weak = passwordProblem(password);
+      if (weak) errs.password = weak;
+      if (!terms) errs.terms = 'Para criar a conta, aceite os Termos de uso e a Política de privacidade.';
     }
     if (!validEmail(email)) errs.email = 'Informe um e-mail válido.';
-    if (mode !== 'esqueci' && password.length < 6) errs.password = 'A senha precisa ter pelo menos 6 caracteres.';
+    if (mode === 'entrar' && !password) errs.password = 'Digite sua senha.';
     setErrors(errs);
     setFormError(null);
     if (Object.keys(errs).length) return;
@@ -67,7 +73,7 @@ export function AuthPage() {
           email: email.trim(),
           password,
           options: {
-            data: { full_name: name.trim(), phone: onlyDigits(phone) },
+            data: { full_name: name.trim(), phone: onlyDigits(phone), terms_version: TERMS_VERSION },
             emailRedirectTo: appBaseUrl(),
           },
         });
@@ -76,9 +82,8 @@ export function AuthPage() {
           await refreshProfile();
           toast('Conta criada!');
           navigate(back, { replace: true });
-        } else if (data.user && data.user.identities?.length === 0) {
-          throw new Error('User already registered');
         } else {
+          // Mesma resposta para e-mail novo e e-mail que já tem conta: ninguém descobre quem é cliente.
           setSent('confirmar');
         }
       } else {
@@ -99,7 +104,7 @@ export function AuthPage() {
         <Empty icon={<MailCheck size={34} />} title="Confira seu e-mail">
           <p>
             {sent === 'confirmar'
-              ? `Enviamos um link de confirmação para ${email}. Depois de confirmar, é só entrar.`
+              ? `Se ${email} ainda não tiver conta, enviamos um link de confirmação. Depois de confirmar, é só entrar. Se você já tem conta, entre ou use "Esqueceu a senha?".`
               : `Se existir uma conta com ${email}, você vai receber um link para criar uma nova senha.`}
           </p>
           <button className="btn outline" onClick={() => { setSent(null); setMode('entrar'); }}>
@@ -164,8 +169,27 @@ export function AuthPage() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             error={errors.password}
-            hint={mode === 'cadastro' ? 'Pelo menos 6 caracteres.' : undefined}
+            hint={mode === 'cadastro' ? PASSWORD_HINT : undefined}
           />
+        )}
+        {mode === 'cadastro' && (
+          <div className="field">
+            <label className="consent">
+              <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} aria-invalid={errors.terms ? true : undefined} />
+              <span>
+                Li e aceito os{' '}
+                <Link to="/termos" target="_blank" rel="noopener">
+                  Termos de uso
+                </Link>{' '}
+                e a{' '}
+                <Link to="/privacidade" target="_blank" rel="noopener">
+                  Política de privacidade
+                </Link>
+                .
+              </span>
+            </label>
+            {errors.terms && <span className="error-text">{errors.terms}</span>}
+          </div>
         )}
         {formError && <p className="error-text" role="alert">{formError}</p>}
         <button className="btn primary block" disabled={busy}>

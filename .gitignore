@@ -7,3 +7,4 @@ tests/out
 e2e-prints
 .env.*.local
 *.tsbuildinfo
+dist-local

@@ -65,7 +65,7 @@ export function AppointmentSheet({ appt, tz, onClose, onChanged, onReschedule }:
                 confirm: 'Remover',
                 danger: true,
               });
-              if (ok) void run('del', () => supabase.from('appointments').delete().eq('id', appt.id), 'Bloqueio removido.');
+              if (ok) void run('del', () => supabase.rpc('admin_delete_block', { p_id: appt.id }), 'Bloqueio removido.');
             }}
           >
             {busy === 'del' && <Spinner small />} Remover bloqueio

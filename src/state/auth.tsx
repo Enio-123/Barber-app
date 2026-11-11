@@ -1,7 +1,8 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
-import type { Profile } from '../lib/types';
+import type { Profile, Role } from '../lib/types';
+import { permissions, type Can } from '../lib/roles';
 
 type AuthState = {
   ready: boolean;
@@ -9,7 +10,14 @@ type AuthState = {
   profile: Profile | null;
   /** true quando o perfil de quem está logado já foi buscado (ou não tem ninguém logado). */
   profileReady: boolean;
-  isAdmin: boolean;
+  role: Role | null;
+  /** Faz parte da equipe (barbeiro, recepção, gerente ou dono). */
+  isStaff: boolean;
+  can: Can;
+  /** aal2 quando a sessão já passou pela verificação em duas etapas. */
+  aal: 'aal1' | 'aal2' | null;
+  /** Já tem app autenticador cadastrado. */
+  hasMfa: boolean;
   recovering: boolean;
   clearRecovering: () => void;
   refreshProfile: () => Promise<Profile | null>;
@@ -19,8 +27,24 @@ type AuthState = {
 const Ctx = createContext<AuthState | null>(null);
 
 async function loadProfile(userId: string) {
-  const { data } = await supabase.from('profiles').select('id, full_name, phone, role').eq('id', userId).maybeSingle();
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, full_name, phone, role, barber_id, terms_version, terms_accepted_at')
+    .eq('id', userId)
+    .maybeSingle();
   return (data as Profile | null) ?? null;
+}
+
+/** Lê o nível de verificação do token da sessão (só para a tela; o banco confere o token assinado). */
+function aalOf(token: string | undefined): 'aal1' | 'aal2' | null {
+  if (!token) return null;
+  try {
+    const part = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const json = JSON.parse(atob(part + '='.repeat((4 - (part.length % 4)) % 4))) as { aal?: string };
+    return json.aal === 'aal2' ? 'aal2' : 'aal1';
+  } catch {
+    return 'aal1';
+  }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -83,12 +107,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<AuthState>(() => {
     const own = profile && profile.id === userId ? profile : null;
+    const role = own?.role ?? null;
     return {
       ready,
       session,
       profile: own,
       profileReady: !userId || profileFor === userId,
-      isAdmin: own?.role === 'admin',
+      role,
+      isStaff: Boolean(role && role !== 'client'),
+      can: permissions(role),
+      aal: aalOf(session?.access_token),
+      hasMfa: Boolean(session?.user.factors?.some((f) => f.status === 'verified')),
       recovering,
       clearRecovering: () => setRecovering(false),
       refreshProfile,

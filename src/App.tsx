@@ -13,6 +13,7 @@ import { ProfilePage } from './client/ProfilePage';
 import { AuthPage } from './client/AuthPage';
 import { ResetPasswordPage } from './client/ResetPasswordPage';
 import { BookedPage } from './client/BookedPage';
+import { PrivacyPage, TermsPage } from './client/LegalPages';
 
 // O painel só é baixado por quem abre o painel: o app do cliente fica leve no 4G.
 const AdminRoutes = lazy(() => import('./admin/AdminRoutes'));
@@ -46,6 +47,8 @@ function Gate() {
           <Route path="entrar" element={<AuthPage />} />
           <Route path="redefinir-senha" element={<ResetPasswordPage />} />
           <Route path="agendado/:id" element={<BookedPage />} />
+          <Route path="privacidade" element={<PrivacyPage />} />
+          <Route path="termos" element={<TermsPage />} />
         </Route>
         <Route
           path="admin/*"

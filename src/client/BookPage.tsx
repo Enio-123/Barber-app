@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { CalendarClock, Check, ChevronRight, Scissors, UserRound, Users, MessageCircle } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../state/auth';
@@ -12,6 +12,7 @@ import { Sheet } from '../ui/Sheet';
 import { Calendar } from '../ui/Calendar';
 import { Avatar, Empty, Loading, Notice, Segmented, Spinner, Stars } from '../ui/kit';
 import { ProfileForm } from './ProfileForm';
+import { TERMS_VERSION } from '../lib/legal';
 
 type Draft = { barber: string | null; services: string[]; day: DayKey | null; start: string | null; note: string };
 const KEY = 'easycut-draft';
@@ -26,7 +27,7 @@ function readDraft(): Draft {
   }
 }
 
-type SheetName = 'barber' | 'services' | 'time' | 'profile' | null;
+type SheetName = 'barber' | 'services' | 'time' | 'profile' | 'terms' | null;
 
 export function BookPage() {
   const { session, profile, refreshProfile } = useAuth();
@@ -65,7 +66,7 @@ export function BookPage() {
 
   const status = openStatus(hours, tz);
 
-  async function confirm() {
+  async function confirm(termsJustAccepted = false) {
     if (!complete || !draft.start) return;
     if (!session) {
       toast('Entre ou crie sua conta para confirmar o horário.');
@@ -74,6 +75,11 @@ export function BookPage() {
     }
     if (!profile?.full_name?.trim() || !profile.phone) {
       setSheet('profile');
+      return;
+    }
+    // Conta antiga ou termos novos: pede o aceite antes de agendar.
+    if (!termsJustAccepted && profile.terms_version !== TERMS_VERSION) {
+      setSheet('terms');
       return;
     }
     setSaving(true);
@@ -85,6 +91,7 @@ export function BookPage() {
     });
     setSaving(false);
     if (e) {
+      if (isCode(e, 'ACEITE_TERMOS')) return setSheet('terms');
       toast(errorMessage(e), 'error');
       if (isCode(e, 'HORARIO_INDISPONIVEL')) {
         setDraft((d) => ({ ...d, start: null }));
@@ -208,7 +215,7 @@ export function BookPage() {
         </div>
       )}
 
-      <button className="btn primary block" disabled={!complete || saving} onClick={confirm}>
+      <button className="btn primary block" disabled={!complete || saving} onClick={() => void confirm()}>
         {saving ? <Spinner small /> : null}
         {session ? 'Confirmar agendamento' : 'Entrar e confirmar'}
       </button>
@@ -298,6 +305,17 @@ export function BookPage() {
         />
       )}
 
+      {sheet === 'terms' && (
+        <TermsSheet
+          onClose={() => setSheet(null)}
+          onAccepted={async () => {
+            setSheet(null);
+            await refreshProfile();
+            void confirm(true);
+          }}
+        />
+      )}
+
       {sheet === 'profile' && (
         <Sheet title="Complete seu cadastro" onClose={() => setSheet(null)}>
           <p className="text-2" style={{ marginBottom: 16 }}>
@@ -314,6 +332,46 @@ export function BookPage() {
         </Sheet>
       )}
     </div>
+  );
+}
+
+function TermsSheet({ onClose, onAccepted }: { onClose: () => void; onAccepted: () => void | Promise<void> }) {
+  const { toast } = useFeedback();
+  const [busy, setBusy] = useState(false);
+  async function accept() {
+    setBusy(true);
+    const { error } = await supabase.rpc('accept_terms', { p_version: TERMS_VERSION });
+    setBusy(false);
+    if (error) return toast(errorMessage(error), 'error');
+    await onAccepted();
+  }
+  return (
+    <Sheet
+      title="Termos e privacidade"
+      onClose={onClose}
+      footer={
+        <>
+          <button className="btn outline" onClick={onClose}>
+            Agora não
+          </button>
+          <button className="btn primary" disabled={busy} onClick={accept}>
+            {busy && <Spinner small />} Aceitar e agendar
+          </button>
+        </>
+      }
+    >
+      <p className="text-2">
+        Para agendar, leia e aceite os{' '}
+        <Link to="/termos" target="_blank" rel="noopener">
+          Termos de uso
+        </Link>{' '}
+        e a{' '}
+        <Link to="/privacidade" target="_blank" rel="noopener">
+          Política de privacidade
+        </Link>
+        . Eles explicam as regras de agendamento e cancelamento e como a barbearia usa seu nome, WhatsApp e e-mail.
+      </p>
+    </Sheet>
   );
 }
 

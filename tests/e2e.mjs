@@ -1,10 +1,14 @@
 // Teste de ponta a ponta no navegador (celular e computador) contra o Supabase local.
 // Rodar: dev/stack.sh up && node dev/proxy.mjs & npm run dev &  depois  node tests/e2e.mjs [pasta-dos-prints]
+// Com a versão publicada (confere também a política de segurança do navegador, CSP):
+//   VITE_SUPABASE_URL=http://127.0.0.1:54321 VITE_SUPABASE_ANON_KEY=<ANON_KEY de dev/local.env> npx vite build --outDir dist-local
+//   npx vite preview --outDir dist-local --port 4173 &   APP_URL=http://127.0.0.1:4173/ node tests/e2e.mjs
 // Precisa do Playwright instalado (npm i -D playwright).
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import { readFileSync, mkdirSync } from 'node:fs';
 import assert from 'node:assert/strict';
+import { totp } from './totp.mjs';
 
 const require = createRequire(import.meta.url);
 const { chromium, devices } = require('playwright');
@@ -41,6 +45,7 @@ const stamp = Date.now();
 const email = (n) => `${n}${stamp}@teste.local`;
 
 const results = [];
+const cspViolations = [];
 let failed = 0;
 let failShot = null; // página para print quando um passo falha
 async function step(name, fn) {
@@ -55,22 +60,56 @@ async function step(name, fn) {
     throw e;
   }
 }
-// Prints sem animação no meio e sem os avisos flutuantes por cima do conteúdo.
-const shot = (page, name, full = false) =>
-  page.screenshot({ path: `${OUT}/${name}.png`, fullPage: full, animations: 'disabled', caret: 'hide', style: '.toasts{display:none!important}' });
+// Prints sem animação no meio e sem os avisos flutuantes por cima do conteúdo. Os avisos são escondidos
+// pelo próprio elemento (a CSP da versão publicada bloqueia o <style> que o Playwright injetaria).
+const setToasts = (page, visibility) =>
+  page.evaluate((v) => document.querySelectorAll('.toasts').forEach((t) => (t.style.visibility = v)), visibility).catch(() => undefined);
+async function shot(page, name, full = false) {
+  await setToasts(page, 'hidden');
+  await page.screenshot({ path: `${OUT}/${name}.png`, fullPage: full, animations: 'disabled', caret: 'hide' });
+  await setToasts(page, '');
+}
 const toast = (page, text) => page.locator('.toast', { hasText: text }).first().waitFor({ timeout: 10000 });
 
-async function newPhone(browser) {
-  const ctx = await browser.newContext({ ...devices['Pixel 7'], locale: 'pt-BR', timezoneId: TZ });
-  const page = await ctx.newPage();
+function watch(page) {
+  failShot = page;
   page.on('pageerror', (e) => results.push(`     erro na página: ${e.message}`));
+  // Qualquer bloqueio da política de segurança (CSP) é falha: algo do app deixaria de funcionar.
+  page.on('console', (m) => /Content Security Policy|Refused to (load|connect|execute|apply)/i.test(m.text()) && cspViolations.push(m.text()));
   return page;
+}
+async function newPhone(browser) {
+  const ctx = await browser.newContext({ ...devices['Pixel 7'], locale: 'pt-BR', timezoneId: TZ, acceptDownloads: true });
+  return watch(await ctx.newPage());
 }
 async function newDesktop(browser) {
   const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2, locale: 'pt-BR', timezoneId: TZ });
-  const page = await ctx.newPage();
-  page.on('pageerror', (e) => results.push(`     erro na página: ${e.message}`));
-  return page;
+  return watch(await ctx.newPage());
+}
+
+// Código do app autenticador. O mesmo código não é usado duas vezes: espera o próximo, se preciso.
+const lastWindow = new Map();
+async function authCode(secret) {
+  const w = Math.floor(Date.now() / 30000);
+  if (lastWindow.get(secret) === w) await new Promise((r) => setTimeout(r, (w + 1) * 30000 - Date.now() + 500));
+  lastWindow.set(secret, Math.floor(Date.now() / 30000));
+  return totp(secret);
+}
+/** Cadastra o app autenticador na tela do painel e devolve a chave secreta. */
+async function enrollAuthenticator(page, shotName) {
+  await page.getByRole('heading', { name: 'Proteja o painel' }).waitFor();
+  await page.locator('.mfa-qr img').waitFor();
+  if (shotName) await shot(page, shotName);
+  const secret = (await page.locator('.mfa-secret').textContent()).replace(/\s+/g, '');
+  await page.getByLabel('Código do app').fill(await authCode(secret));
+  await page.getByRole('button', { name: 'Confirmar e entrar' }).click();
+  return secret;
+}
+async function verifyAuthenticator(page, secret, shotName) {
+  await page.getByRole('heading', { name: 'Verificação em duas etapas' }).waitFor();
+  if (shotName) await shot(page, shotName);
+  await page.getByLabel('Código do app').fill(await authCode(secret));
+  await page.getByRole('button', { name: 'Entrar no painel' }).click();
 }
 
 async function signUpForm(page, { name, phone, mail, password = 'senha123' }) {
@@ -79,6 +118,7 @@ async function signUpForm(page, { name, phone, mail, password = 'senha123' }) {
   await page.getByLabel('WhatsApp').fill(phone);
   await page.getByLabel('E-mail').fill(mail);
   await page.getByLabel('Senha', { exact: true }).fill(password);
+  await page.getByLabel(/Li e aceito/).check();
 }
 async function submitSignUp(page) {
   await page.locator('form').getByRole('button', { name: 'Criar conta' }).click();
@@ -220,14 +260,21 @@ try {
 
   // ---------- dono: painel no computador ----------
   const ADM = await newDesktop(browser);
-  await step('dono cria a conta e assume o painel no primeiro acesso', async () => {
+  let ownerSecret = '';
+  await step('dono assume o painel com o código de primeiro acesso e cadastra o app autenticador', async () => {
     await ADM.goto(`${APP}#/entrar?modo=cadastro`);
     await signUpForm(ADM, { name: 'Dono da barbearia', phone: '84998567528', mail: email('dono') });
     await submitSignUp(ADM);
     await ADM.goto(`${APP}#/admin?dia=${D}`);
     await ADM.getByRole('heading', { name: 'Primeiro acesso ao painel' }).waitFor();
+    await ADM.getByLabel('Código de primeiro acesso').fill('ABCDE-23456');
+    await ADM.getByRole('button', { name: 'Assumir o painel' }).click();
+    await ADM.getByRole('alert').filter({ hasText: 'Código' }).waitFor();
+    const ownerCode = psql('select private.new_owner_code();');
+    await ADM.getByLabel('Código de primeiro acesso').fill(ownerCode);
     await shot(ADM, '21-painel-primeiro-acesso');
-    await ADM.getByRole('button', { name: 'Sou o dono, assumir o painel' }).click();
+    await ADM.getByRole('button', { name: 'Assumir o painel' }).click();
+    ownerSecret = await enrollAuthenticator(ADM, '22-painel-autenticador');
     await ADM.locator('.event').first().waitFor();
     assert.equal(await ADM.locator('.event').count(), 3, 'a grade devia ter 3 clientes (João, Pedro, Marcos)');
     await shot(ADM, '10-painel-agenda');
@@ -324,8 +371,41 @@ try {
     await shot(ADM, '18-painel-avaliacoes');
     await ADM.goto(`${APP}#/admin/ajustes`);
     await ADM.locator('canvas.qr').waitFor();
+    await ADM.getByText('verificação em duas etapas ativa').waitFor();
+    const history = ADM.locator('.audit-list');
+    await history.getByText('remarcou').first().waitFor();
+    await history.getByText(/bloqueou a agenda/).first().waitFor();
+    await history.getByText(/alterou o serviço Pigmentação \(preço\)/).first().waitFor();
+    assert.ok(!(await history.innerText()).includes('84999990104'), 'o histórico não deve guardar telefone de cliente');
     await ADM.waitForTimeout(500);
     await shot(ADM, '19-painel-ajustes', true);
+  });
+  await step('dono libera um barbeiro, que entra com o autenticador e vê só a própria agenda', async () => {
+    const BB = await newDesktop(browser);
+    failShot = BB;
+    await BB.goto(`${APP}#/entrar?modo=cadastro`);
+    await signUpForm(BB, { name: 'Barbeiro Um', phone: '84999990199', mail: email('barbeiro') });
+    await submitSignUp(BB);
+    await ADM.goto(`${APP}#/admin/ajustes`);
+    await ADM.getByLabel('E-mail da pessoa').fill(email('barbeiro'));
+    await ADM.locator('#team-role').selectOption('barber');
+    await ADM.locator('#team-barber').selectOption({ label: 'Barbeiro 1' });
+    await ADM.getByRole('button', { name: 'Dar acesso' }).click();
+    await toast(ADM, 'Acesso liberado como barbeiro');
+    await ADM.locator('.team-item', { hasText: 'Barbeiro Um' }).getByText('falta cadastrar o app autenticador').waitFor();
+    await BB.goto(`${APP}#/admin?dia=${D}`);
+    await enrollAuthenticator(BB);
+    await BB.locator('.event').first().waitFor();
+    const columns = await BB.locator('.grid-head .col-name, .agenda-col-name').allInnerTexts().catch(() => []);
+    const names = await BB.locator('.event').allInnerTexts();
+    assert.ok(names.some((t) => t.includes('João Pedro Alves')) && !names.some((t) => t.includes('Pedro Henrique Costa')),
+      `barbeiro devia ver só a agenda do Barbeiro 1: ${names.join(' | ')} ${columns.join(',')}`);
+    const nav = await BB.locator('.admin-side .nav-link').allInnerTexts();
+    assert.ok(!nav.some((t) => /Clientes|Serviços|Ajustes/.test(t)), `menu do barbeiro com itens demais: ${nav.join(', ')}`);
+    await shot(BB, '23-painel-barbeiro');
+    await BB.goto(`${APP}#/admin/clientes`);
+    await BB.waitForURL((u) => u.hash.startsWith('#/admin') && !u.hash.includes('clientes'));
+    await BB.context().close();
   });
   await step('painel no celular abre a agenda em lista', async () => {
     const M = await newPhone(browser);
@@ -333,6 +413,7 @@ try {
     await M.getByLabel('E-mail').fill(email('dono'));
     await M.getByLabel('Senha', { exact: true }).fill('senha123');
     await M.locator('form').getByRole('button', { name: 'Entrar' }).click();
+    await verifyAuthenticator(M, ownerSecret, '24-painel-codigo-celular');
     await M.locator('.agenda-item').first().waitFor();
     await shot(M, '20-painel-celular');
     await M.context().close();
@@ -365,6 +446,67 @@ try {
   await step('cliente comum não entra no painel', async () => {
     await B.goto(`${APP}#/admin`);
     await B.getByRole('heading', { name: 'Sem acesso ao painel' }).waitFor();
+  });
+  await step('cliente baixa os próprios dados e exclui a conta', async () => {
+    failShot = C;
+    await C.goto(`${APP}#/perfil`);
+    const [download] = await Promise.all([C.waitForEvent('download'), C.getByRole('button', { name: 'Baixar meus dados' }).click()]);
+    const data = JSON.parse(readFileSync(await download.path(), 'utf8'));
+    assert.equal(data.conta.email, email('marcos'));
+    assert.ok(data.agendamentos.length >= 2, 'devia trazer os agendamentos');
+    assert.ok(!JSON.stringify(data).includes('João Pedro'), 'não pode trazer dados de outro cliente');
+    await C.getByRole('button', { name: 'Excluir minha conta' }).click();
+    const dialog = C.getByRole('dialog', { name: 'Excluir minha conta' });
+    await dialog.getByLabel('Sua senha').fill('senha-errada1');
+    await dialog.getByRole('button', { name: 'Excluir de vez' }).click();
+    await dialog.getByText('Senha incorreta.').waitFor();
+    await dialog.getByLabel('Sua senha').fill('senha123');
+    await shot(C, '25-cliente-excluir-conta');
+    await dialog.getByRole('button', { name: 'Excluir de vez' }).click();
+    await toast(C, 'Sua conta foi excluída');
+    assert.equal(psql(`select count(*) from auth.users where email = '${email('marcos')}'`), '0');
+    assert.equal(psql(`select count(*) from public.appointments where client_name = 'Marcos Vinícius Rocha'`), '0');
+    await C.goto(`${APP}#/entrar`);
+    await C.getByLabel('E-mail').fill(email('marcos'));
+    await C.getByLabel('Senha', { exact: true }).fill('senha123');
+    await C.locator('form').getByRole('button', { name: 'Entrar' }).click();
+    await C.getByText('E-mail ou senha incorretos.').waitFor();
+  });
+  await step('o app não abre escondido dentro de outro site', async () => {
+    const F = await newDesktop(browser);
+    await F.setContent(`<h1>site de fora</h1><iframe id="f" src="${APP}" style="width:800px;height:500px"></iframe>`);
+    // Ou o navegador deixa o app tirar a página de fora do caminho, ou o app mostra só um link (nunca as telas).
+    const frame = F.frameLocator('#f');
+    const outcome = await Promise.race([
+      F.waitForURL((u) => u.href.startsWith(APP), { timeout: 15000 }).then(() => 'saiu do site de fora'),
+      frame.getByRole('link', { name: 'Abrir o app de agendamento' }).waitFor({ timeout: 15000 }).then(() => 'mostrou só o link'),
+    ]);
+    if (outcome === 'mostrou só o link') {
+      await F.waitForTimeout(800);
+      assert.equal(await frame.locator('.app, .admin, form').count(), 0, 'o app não pode aparecer dentro de outro site');
+    }
+    results.push(`     (${outcome})`);
+    await F.context().close();
+  });
+  await step('política de segurança do navegador (CSP) ativa e sem bloqueios', async () => {
+    const html = await (await fetch(APP)).text();
+    if (!html.includes('Content-Security-Policy')) {
+      results.push('     (servidor de desenvolvimento: a CSP só existe na versão publicada)');
+      return;
+    }
+    assert.equal(cspViolations.length, 0, `algo do app foi bloqueado pela CSP: ${cspViolations.slice(0, 3).join(' | ')}`);
+    const P2 = await newPhone(browser);
+    await P2.goto(APP);
+    await P2.getByRole('heading', { name: 'Agende seu horário' }).waitFor();
+    const blocked = await P2.evaluate(() => new Promise((resolve) => {
+      document.addEventListener('securitypolicyviolation', () => resolve(true), { once: true });
+      const s = document.createElement('script');
+      s.textContent = 'window.__injetado = true';
+      document.body.appendChild(s);
+      setTimeout(() => resolve(Boolean(window.__injetado) ? 'rodou' : false), 1500);
+    }));
+    assert.equal(blocked, true, 'script injetado devia ser bloqueado');
+    await P2.context().close();
   });
 } catch {
   // o erro já foi registrado no passo

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Star, Trash2 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { tzOf, useShop } from '../state/shop';
+import { useAuth } from '../state/auth';
 import { useFeedback } from '../state/feedback';
 import { errorMessage } from '../lib/errors';
 import { dayKeyOf, formatDay } from '../lib/time';
@@ -10,8 +11,11 @@ import { Avatar, Empty, Loading, Notice, Stars } from '../ui/kit';
 import { AdminTitle } from './AdminLayout';
 
 export function ReviewsPage() {
-  const { shop, barbers, reload: reloadShop } = useShop();
+  const { shop, barbers: allBarbers, reload: reloadShop } = useShop();
+  const { can, profile } = useAuth();
   const { toast, confirm } = useFeedback();
+  // Barbeiro vê só as próprias avaliações (o banco também só entrega essas).
+  const barbers = can.agendaAll ? allBarbers : allBarbers.filter((b) => b.id === profile?.barber_id);
   const tz = tzOf(shop);
   const [list, setList] = useState<AdminReview[] | null>(null);
   const [failed, setFailed] = useState(false);
@@ -117,9 +121,11 @@ export function ReviewsPage() {
                       {r.appointment ? ` · atendimento de ${formatDay(dayKeyOf(r.appointment.starts_at, tz), 'medium')}` : ''}
                     </p>
                   </div>
-                  <button className="icon-btn" aria-label="Apagar avaliação" onClick={() => remove(r)}>
-                    <Trash2 size={17} />
-                  </button>
+                  {can.reviewsDelete && (
+                    <button className="icon-btn" aria-label="Apagar avaliação" onClick={() => remove(r)}>
+                      <Trash2 size={17} />
+                    </button>
+                  )}
                 </div>
               );
             })}

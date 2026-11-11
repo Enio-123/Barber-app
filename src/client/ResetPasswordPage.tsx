@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../state/auth';
 import { useFeedback } from '../state/feedback';
 import { errorMessage } from '../lib/errors';
+import { passwordProblem, PASSWORD_HINT } from '../lib/password';
 import { Empty, PasswordField, Spinner } from '../ui/kit';
 
 export function ResetPasswordPage() {
@@ -27,14 +28,20 @@ export function ResetPasswordPage() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
-    if (pw.length < 6) return setErr('A senha precisa ter pelo menos 6 caracteres.');
+    const problem = passwordProblem(pw);
+    if (problem) return setErr(problem);
     if (pw !== pw2) return setErr('As senhas não são iguais.');
     setBusy(true);
     const { error } = await supabase.auth.updateUser({ password: pw });
+    if (error) {
+      setBusy(false);
+      return setErr(errorMessage(error));
+    }
+    // Quem pediu a troca pode estar recuperando uma conta invadida: tira a conta dos outros aparelhos.
+    await supabase.auth.signOut({ scope: 'others' });
     setBusy(false);
-    if (error) return setErr(errorMessage(error));
     clearRecovering();
-    toast('Senha alterada. Você já está conectado.');
+    toast('Senha alterada. Os outros aparelhos saíram da conta.');
     navigate('/', { replace: true });
   }
 
@@ -42,7 +49,7 @@ export function ResetPasswordPage() {
     <div className="stack lg">
       <div>
         <h1 className="page-title">Criar nova senha</h1>
-        <p className="page-sub">Escolha uma senha com pelo menos 6 caracteres.</p>
+        <p className="page-sub">{PASSWORD_HINT}</p>
       </div>
       <form className="form" onSubmit={submit} noValidate>
         <PasswordField label="Nova senha" autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />

@@ -26,6 +26,16 @@ export const supabase = createClient(url || 'http://localhost:54321', key || 'se
   },
 });
 
+/** Confere a senha sem trocar a sessão aberta: entra num cliente separado, que não guarda nada, e sai em seguida. */
+export async function checkPassword(email: string, password: string) {
+  const probe = createClient(url || 'http://localhost:54321', key || 'sem-chave', {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: 'easycut-conferir-senha' },
+  });
+  const { error } = await probe.auth.signInWithPassword({ email, password });
+  if (!error) await probe.auth.signOut({ scope: 'local' });
+  return error;
+}
+
 /** Endereço base do app (sem o #/rota), usado nos links de e-mail. */
 export function appBaseUrl() {
   return window.location.origin + window.location.pathname;

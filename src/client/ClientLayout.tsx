@@ -5,7 +5,7 @@ import { useShop } from '../state/shop';
 import { Wordmark, scriptName } from '../ui/kit';
 
 export function ClientLayout() {
-  const { session, isAdmin } = useAuth();
+  const { session, isStaff } = useAuth();
   const { shop } = useShop();
   return (
     <div className="app">
@@ -13,7 +13,7 @@ export function ClientLayout() {
         <Link to="/" aria-label="Início">
           <Wordmark sticker size="sm" name={scriptName(shop?.name ?? 'Easy Cut')} tagline={shop?.tagline ?? 'Studio & Barber Shop'} />
         </Link>
-        {isAdmin ? (
+        {isStaff ? (
           <Link className="btn sm outline" to="/admin">
             <LayoutDashboard size={16} /> Painel
           </Link>

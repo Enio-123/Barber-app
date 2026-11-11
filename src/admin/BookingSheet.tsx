@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { UserRound, X } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { useShop } from '../state/shop';
+import { useAuth } from '../state/auth';
 import { useFeedback } from '../state/feedback';
 import { errorMessage } from '../lib/errors';
 import { dayKeyOf, durationLabel, formatDay, hhmmToMin, minToHhmm, timeOf, todayKey, weekdayOf, zonedToDate, type DayKey } from '../lib/time';
@@ -27,10 +28,13 @@ type Busy = { id: string; s: number; e: number; label: string };
 /** Novo agendamento feito pela barbearia (cliente do balcão, ligação, WhatsApp) ou remarcação. */
 export function BookingSheet({ tz, initial, reschedule, onClose, onSaved }: Props) {
   const { shop, barbers, services, hours } = useShop();
+  const { can, profile } = useAuth();
   const { toast } = useFeedback();
   const today = todayKey(tz);
   const startIso = reschedule?.starts_at ?? initial?.start;
-  const barberOptions = barbers.filter((b) => b.active || b.id === reschedule?.barber_id);
+  const barberOptions = barbers.filter(
+    (b) => (b.active || b.id === reschedule?.barber_id) && (can.agendaAll || b.id === profile?.barber_id),
+  );
   const activeServices = services.filter((s) => s.active);
 
   const [barberId, setBarberId] = useState(reschedule?.barber_id ?? initial?.barberId ?? barberOptions[0]?.id ?? '');
@@ -53,14 +57,15 @@ export function BookingSheet({ tz, initial, reschedule, onClose, onSaved }: Prop
   const slot = shop?.slot_minutes ?? 30;
   const len = duration || slot;
 
+  const canPickClient = can.clients;
   useEffect(() => {
-    if (reschedule) return;
+    if (reschedule || !canPickClient) return;
     let alive = true;
     supabase.rpc('admin_clients').then(({ data }) => alive && setClients((data as AdminClient[] | null) ?? []));
     return () => {
       alive = false;
     };
-  }, [reschedule]);
+  }, [reschedule, canPickClient]);
 
   const rescheduleId = reschedule?.id;
   useEffect(() => {
@@ -130,11 +135,11 @@ export function BookingSheet({ tz, initial, reschedule, onClose, onSaved }: Prop
     const start = zonedToDate(day, time, tz);
     setSaving(true);
     if (reschedule) {
-      const end = new Date(start.getTime() + duration * 60000);
-      const { error } = await supabase
-        .from('appointments')
-        .update({ starts_at: start.toISOString(), ends_at: end.toISOString(), barber_id: barberId })
-        .eq('id', reschedule.id);
+      const { error } = await supabase.rpc('admin_reschedule', {
+        p_id: reschedule.id,
+        p_barber_id: barberId,
+        p_starts_at: start.toISOString(),
+      });
       setSaving(false);
       if (error) return toast(errorMessage(error), 'error');
       onSaved(reschedule.id, 'Horário remarcado. Avise o cliente pelo WhatsApp.', day);
@@ -179,7 +184,7 @@ export function BookingSheet({ tz, initial, reschedule, onClose, onSaved }: Prop
                 id="bk-name"
                 className="input"
                 autoComplete="off"
-                placeholder="Nome ou WhatsApp de quem já é cliente"
+                placeholder={canPickClient ? 'Nome ou WhatsApp de quem já é cliente' : 'Nome do cliente'}
                 value={name}
                 maxLength={80}
                 aria-invalid={errors.name ? true : undefined}

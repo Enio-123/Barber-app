@@ -1,0 +1,13 @@
+# Avisa toda semana quando sair correção para as bibliotecas do app e para as ações do GitHub.
+# Cada pull request do Dependabot passa pelos mesmos testes antes de poder entrar.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

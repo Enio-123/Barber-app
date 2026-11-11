@@ -44,11 +44,19 @@ export type Hours = {
 
 export type Rating = { barber_id: string; average: number; total: number };
 
+/** Papéis: cliente e, na equipe, barbeiro (só a própria agenda), recepção (agenda de todos e clientes),
+ *  gerente (mais o cadastro da barbearia) e dono (mais equipe e histórico). */
+export type Role = 'client' | 'barber' | 'reception' | 'manager' | 'owner';
+export type StaffRole = Exclude<Role, 'client'>;
+
 export type Profile = {
   id: string;
   full_name: string;
   phone: string | null;
-  role: 'client' | 'admin';
+  role: Role;
+  barber_id: string | null;
+  terms_version: string | null;
+  terms_accepted_at: string | null;
 };
 
 export type Status = 'confirmed' | 'completed' | 'cancelled' | 'no_show';
@@ -98,4 +106,22 @@ export type AdminReview = {
   appointment: { starts_at: string; client_name: string | null } | null;
 };
 
-export type AdminUser = { id: string; full_name: string; email: string };
+export type TeamMember = {
+  id: string;
+  full_name: string;
+  email: string;
+  role: StaffRole;
+  barber_id: string | null;
+  has_mfa: boolean;
+};
+
+export type AuditEntry = {
+  at: string;
+  actor_name: string;
+  actor_role: string | null;
+  action: string;
+  entity: string;
+  entity_id: string | null;
+  target: string | null;
+  details: Record<string, unknown> | null;
+};

@@ -37,13 +37,9 @@ export function minuteIn(iso: string, dayStartMs: number) {
   return (new Date(iso).getTime() - dayStartMs) / 60000;
 }
 
-export function downloadText(filename: string, text: string, type = 'text/csv;charset=utf-8') {
-  const blob = new Blob(['﻿' + text], { type });
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = filename;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+/** Planilha segura: um nome como "=HYPERLINK(...)" vira texto e não fórmula quando abrir no Excel. */
+export function safeCell(v: string) {
+  return /^[=+\-@\t\r]/.test(v) ? `'${v}` : v;
 }
+
+export { downloadText } from '../lib/download';

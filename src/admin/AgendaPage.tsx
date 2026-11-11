@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Ban, CalendarPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { tzOf, useShop } from '../state/shop';
+import { useAuth } from '../state/auth';
 import { useFeedback } from '../state/feedback';
 import { addDays, formatDay, minToHhmm, timeOf, todayKey, weekdayOf, zonedToDate, WEEKDAYS_SHORT, type DayKey } from '../lib/time';
 import { money } from '../lib/format';
@@ -42,8 +43,11 @@ function useNarrow() {
 }
 
 export function AgendaPage() {
-  const { shop, barbers, hours, loading } = useShop();
+  const { shop, barbers: allBarbers, hours, loading } = useShop();
+  const { can, profile } = useAuth();
   const { toast } = useFeedback();
+  // Barbeiro vê só a própria coluna (o banco também só entrega a agenda dele).
+  const barbers = can.agendaAll ? allBarbers : allBarbers.filter((b) => b.id === profile?.barber_id);
   const tz = tzOf(shop);
   const today = todayKey(tz);
   const [params, setParams] = useSearchParams();
@@ -155,7 +159,10 @@ export function AgendaPage() {
         </button>
       </AdminTitle>
 
-      <SetupSteps />
+      {can.catalog && <SetupSteps />}
+      {!can.agendaAll && !barbers.length && (
+        <Notice>Sua conta ainda não está ligada a um barbeiro. Peça para o dono escolher em Ajustes, na parte Equipe.</Notice>
+      )}
 
       <div className="card card-pad stack">
         <div className="row between" style={{ flexWrap: 'wrap', gap: 12 }}>
@@ -263,7 +270,7 @@ export function AgendaPage() {
           day={day}
           tz={tz}
           appts={list}
-          barbers={barbers}
+          barbers={allBarbers}
           onOpen={setOpen}
           empty={
             barbers.some((b) => b.active) ? (

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useShop } from '../state/shop';
+import { useAuth } from '../state/auth';
 import { useFeedback } from '../state/feedback';
 import { errorMessage } from '../lib/errors';
 import { addDays, todayKey, zonedToDate, type DayKey } from '../lib/time';
@@ -17,9 +18,11 @@ export function BlockSheet({ tz, initial, onClose, onSaved }: {
   onSaved: (message: string) => void;
 }) {
   const { barbers } = useShop();
+  const { can, profile } = useAuth();
   const { toast } = useFeedback();
-  const active = barbers.filter((b) => b.active);
-  const [barber, setBarber] = useState(initial?.barberId ?? 'all');
+  // Barbeiro bloqueia só a própria agenda; recepção para cima bloqueia qualquer um ou todos.
+  const active = barbers.filter((b) => b.active && (can.agendaAll || b.id === profile?.barber_id));
+  const [barber, setBarber] = useState(can.agendaAll ? initial?.barberId ?? 'all' : profile?.barber_id ?? '');
   const [day, setDay] = useState<DayKey>(initial?.day ?? todayKey(tz));
   const [allDay, setAllDay] = useState(false);
   const [until, setUntil] = useState('');
@@ -77,7 +80,7 @@ export function BlockSheet({ tz, initial, onClose, onSaved }: {
         <div className="field">
           <label htmlFor="bl-barber">Quem</label>
           <select id="bl-barber" className="select" value={barber} onChange={(e) => setBarber(e.target.value)}>
-            <option value="all">Todos os barbeiros</option>
+            {can.agendaAll && <option value="all">Todos os barbeiros</option>}
             {active.map((b) => (
               <option key={b.id} value={b.id}>
                 {b.name}

@@ -10,5 +10,8 @@ update public.shop set name = 'Easy Cut', tagline = 'Studio & Barber Shop', what
   address = null, maps_url = null, timezone = 'America/Fortaleza', slot_minutes = 30, min_advance_minutes = 30,
   max_days_ahead = 30, cancel_limit_minutes = 120, max_active_per_client = 2
 where id = 1;
--- Ninguém é dono: o primeiro acesso ao painel volta a aparecer.
-update public.profiles set role = 'client';
+-- Ninguém é dono: o primeiro acesso ao painel volta a aparecer (o teste gera o código de novo).
+update public.profiles set role = 'client', barber_id = null;
+delete from private.owner_claim;
+delete from private.audit_log;
+delete from auth.mfa_factors where user_id in (select id from auth.users where email like '%@teste.local');

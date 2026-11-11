@@ -2266,3 +2266,152 @@ button.nav-link {
     flex-shrink: 0;
   }
 }
+
+/* ---------- segurança: primeiro acesso, verificação em duas etapas, equipe, histórico ---------- */
+.btn.danger-outline {
+  background: transparent;
+  border: 1px solid rgba(242, 85, 90, 0.45);
+  color: var(--danger);
+}
+
+.btn.danger-outline:hover:not(:disabled) {
+  background: var(--danger-soft);
+}
+
+.warning-text {
+  color: var(--warning);
+}
+
+.code-input {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.18em;
+  text-align: center;
+  font-size: 20px;
+  font-weight: 600;
+}
+
+.mfa-card {
+  text-align: left;
+}
+
+.mfa-qr {
+  display: grid;
+  place-items: center;
+}
+
+.mfa-qr img {
+  background: #fff;
+  border-radius: var(--radius);
+  padding: 10px;
+  width: 204px;
+  height: 204px;
+}
+
+.mfa-secret {
+  display: inline-block;
+  margin-top: 4px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  word-break: break-all;
+  user-select: all;
+}
+
+details > summary {
+  cursor: pointer;
+  color: var(--text-2);
+  font-weight: 600;
+}
+
+.team-item {
+  align-items: flex-start;
+}
+
+.team-item > svg {
+  margin-top: 3px;
+  flex: none;
+}
+
+.audit-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.audit-list li {
+  display: grid;
+  grid-template-columns: 118px 1fr;
+  gap: 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-2);
+  line-height: 1.45;
+}
+
+.audit-list li:last-child {
+  border-bottom: 0;
+}
+
+.audit-when {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 560px) {
+  .audit-list li {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+}
+
+.consent {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 14px;
+  line-height: 1.45;
+  color: var(--text-2);
+  cursor: pointer;
+}
+
+.consent input {
+  width: 18px;
+  height: 18px;
+  margin-top: 2px;
+  flex: none;
+  accent-color: var(--accent);
+}
+
+.consent a,
+.legal a,
+.text-2 a {
+  color: var(--text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.legal h2 {
+  font-size: 16px;
+  margin-top: 6px;
+}
+
+.legal p,
+.legal li {
+  color: var(--text-2);
+  line-height: 1.6;
+  font-size: 15px;
+}
+
+.legal ul {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 6px;
+}

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { CalendarPlus, Download, MessageCircle, Search, Users } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { tzOf, useShop } from '../state/shop';
+import { useAuth } from '../state/auth';
 import { useFeedback } from '../state/feedback';
 import { dayKeyOf, formatDay, timeOf } from '../lib/time';
 import { formatPhone, waLink } from '../lib/format';
@@ -12,7 +13,7 @@ import { Avatar, Empty, Loading, Notice, Segmented, StatusBadge } from '../ui/ki
 import { Sheet } from '../ui/Sheet';
 import { AdminTitle } from './AdminLayout';
 import { BookingSheet } from './BookingSheet';
-import { downloadText } from './data';
+import { downloadText, safeCell } from './data';
 
 type Kind = 'all' | 'app' | 'balcao';
 
@@ -20,6 +21,7 @@ const keyOf = (c: AdminClient) => c.client_id ?? `w:${c.phone ?? c.full_name}`;
 
 export function ClientsPage() {
   const { shop } = useShop();
+  const { can } = useAuth();
   const { toast } = useFeedback();
   const navigate = useNavigate();
   const tz = tzOf(shop);
@@ -72,7 +74,7 @@ export function ClientsPage() {
         c.next_visit ? `${dateOf(c.next_visit)} ${timeOf(c.next_visit, tz)}` : '',
       ]),
     ];
-    const csv = rows.map((r) => r.map((v) => `"${v.replace(/"/g, '""')}"`).join(';')).join('\r\n');
+    const csv = rows.map((r) => r.map((v) => `"${safeCell(v).replace(/"/g, '""')}"`).join(';')).join('\r\n');
     downloadText('clientes-easy-cut.csv', csv);
     toast('Lista de clientes baixada.');
   }
@@ -83,9 +85,11 @@ export function ClientsPage() {
   return (
     <div className="stack lg">
       <AdminTitle title="Clientes" sub={`${total} ${total === 1 ? 'cliente' : 'clientes'} · ${fromApp} com conta no app`}>
-        <button className="btn outline" onClick={exportCsv} disabled={!filtered.length}>
-          <Download size={17} /> Exportar planilha
-        </button>
+        {can.exportClients && (
+          <button className="btn outline" onClick={exportCsv} disabled={!filtered.length}>
+            <Download size={17} /> Exportar planilha
+          </button>
+        )}
       </AdminTitle>
 
       {failed && <Notice tone="danger">Não foi possível carregar os clientes. Tente de novo.</Notice>}
