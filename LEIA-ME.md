@@ -144,7 +144,7 @@ Estes ficam no painel do Supabase e não dá para fazer pelo código. Os nomes p
 
 ## Rodar no computador (para mexer no código)
 
-Precisa de Node 20 ou mais novo e Docker.
+Precisa de Node 22 ou mais novo (a biblioteca do Supabase pede) e Docker.
 
 ```bash
 npm install
